@@ -1,0 +1,1290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Maitri Research Station — Final Interactive 3D Digital Twin</title>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--glass:rgba(10,18,34,.8);--line:rgba(255,255,255,.13);--tx:#eaf2ff;--mut:#9fb0c8;--ok:#3ddc84;--bad:#ff5a4d;--amb:#ffc247;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+html,body{height:100%;margin:0;background:#0b1224;overflow:hidden;font-family:Manrope,system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--tx)}
+#c{position:fixed;inset:0;cursor:grab;touch-action:none}#c:active{cursor:grabbing}
+#hud{display:none;position:fixed;left:14px;top:calc(14px + env(safe-area-inset-top,0px));display:flex;max-width:calc(100vw - 28px);overflow-x:auto;background:var(--glass);border:1px solid var(--line);border-radius:14px;backdrop-filter:blur(8px)}
+#hud div{display:flex;align-items:center;gap:10px;padding:10px 18px;border-right:1px solid var(--line);white-space:nowrap}
+#hud div:last-child{border:0}
+#hud i{font-style:normal;font-size:24px}#hud b{display:block;font-size:17px}#hud span{font-size:11px;color:var(--mut)}
+#labels{display:none;position:fixed;inset:0;pointer-events:none;overflow:hidden}
+.lb{font-size:var(--fs,15px);position:absolute;left:0;top:0;display:flex;gap:.7em;align-items:center;padding:.6em .9em;background:var(--glass);border:1px solid var(--line);border-radius:.8em;backdrop-filter:blur(8px);white-space:nowrap;will-change:transform}
+.lb .ph{width:5.4em;height:4.3em;border-radius:.45em;object-fit:cover;border:1px solid rgba(255,255,255,.35)}#lines{position:fixed;inset:0;width:100%;height:100%;pointer-events:none}
+.ic{width:2.1em;height:2.1em;display:grid;place-items:center;border-radius:.55em;border:1.5px solid var(--c);color:var(--c);font-size:1.1em;background:rgba(255,255,255,.04)}
+.t{font-size:.8em;font-weight:600;color:var(--mut)}.v{font-size:1.3em;font-weight:700;line-height:1.15}.s{font-size:.78em;font-weight:600;line-height:1.35}
+.ok{color:var(--ok)}.bad{color:var(--bad)}.amb{color:var(--amb)}.mu{color:var(--mut)}
+#bar{display:none;position:fixed;left:14px;right:14px;bottom:calc(10px + env(safe-area-inset-bottom,0px));padding:10px 16px;background:var(--glass);border:1px solid var(--line);border-radius:12px;font-size:13px;font-weight:700;display:flex;justify-content:space-between;backdrop-filter:blur(8px)}
+#bar em{font-style:normal;color:var(--ok)}
+#tabs{position:fixed;right:14px;bottom:calc(62px + env(safe-area-inset-bottom,0px));display:flex;padding:4px;gap:4px;background:var(--glass);border:1px solid var(--line);border-radius:12px;backdrop-filter:blur(8px)}
+#tabs button{font:inherit;font-size:13px;font-weight:700;color:var(--mut);background:none;border:0;border-radius:9px;padding:8px 14px;cursor:pointer;display:flex;align-items:center;gap:7px}
+#tabs button[aria-selected="true"]{background:rgba(61,220,132,.16);color:var(--ok)}
+#tabs button:focus-visible{outline:2px solid var(--ok);outline-offset:1px}
+#tabs .spin{display:inline-block;transition:transform .3s}
+#tabs button[aria-selected="true"] .spin{animation:sp 2.4s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){#tabs button[aria-selected="true"] .spin{animation:none}}
+@media(max-width:700px){#hud div{padding:8px 12px}#hud i{font-size:18px}#hud b{font-size:14px}}
+
+/* DHRUVA asset recognition labels — embedded Command Center mode */
+#asset-labels{position:fixed;inset:0;z-index:8;pointer-events:none;overflow:hidden}
+.asset-label{position:absolute;transform:translate(-50%,-100%);padding:4px 8px 5px;max-width:190px;border:1px solid rgba(91,220,255,.55);border-radius:7px;background:rgba(4,13,24,.88);box-shadow:0 5px 18px rgba(0,0,0,.28);backdrop-filter:blur(6px);white-space:nowrap;font:700 10px/1.08 Manrope,system-ui,sans-serif;color:#eaf7ff;letter-spacing:.02em;text-shadow:0 1px 5px #000}
+.asset-label:after{content:"";position:absolute;left:50%;bottom:-7px;width:1px;height:7px;background:rgba(91,220,255,.6)}
+.asset-label .asset-type{display:block;font-size:7px;line-height:1.15;color:#7fdcff;letter-spacing:.12em;text-transform:uppercase;margin-bottom:2px}
+.asset-label .asset-value{display:block;font-size:9px;color:#b8c9d8;font-weight:600}
+.asset-label.energy{border-color:rgba(61,220,132,.6)}.asset-label.energy .asset-type{color:#61e59b}
+.asset-label.fuel{border-color:rgba(255,194,71,.65)}.asset-label.fuel .asset-type{color:#ffc247}
+.asset-label.load{border-color:rgba(91,180,255,.6)}
+.asset-label.small{padding:4px 7px;font-size:9px}.asset-label.small .asset-type{font-size:7px}
+
+#station-mark{position:fixed;left:18px;bottom:18px;z-index:4;pointer-events:none;letter-spacing:.16em;text-transform:uppercase;font-size:10px;font-weight:700;color:rgba(235,244,255,.62);text-shadow:0 1px 8px #000}
+#station-mark strong{display:block;font-size:15px;letter-spacing:.08em;color:rgba(245,249,255,.9)}
+#tabs{z-index:5}
+
+/* Embedded DHRUVA mode: the host owns all operational cards and labels. */
+#hud,#labels,#lines,#tabs,#bar,#station-mark{display:none!important}
+#asset-labels{display:block!important}
+#c{position:fixed;inset:0;width:100%;height:100%;cursor:grab;touch-action:none}
+</style>
+<style>body:after{content:"";position:fixed;inset:0;pointer-events:none;background:radial-gradient(ellipse at center,transparent 48%,rgba(4,10,20,.28) 100%);mix-blend-mode:multiply}</style>
+
+<style id="startup-clean-view-css">
+  /* Startup entry view: show the actual 3D station without embedded asset callout labels. */
+  html.startup-mode #asset-labels, body.startup-mode #asset-labels { display:none !important; }
+</style>
+<script>
+  /* URL-scoped startup mode keeps labels available in the Command Center, but removes them from the launch experience. */
+  if (new URLSearchParams(window.location.search).get('startup') === '1') {
+    document.documentElement.classList.add('startup-mode');
+  }
+</script>
+
+<style id="digital-twin-maximize-css">
+  html.dt-maximized, body.dt-maximized {
+    width:100vw !important;
+    height:100vh !important;
+    margin:0 !important;
+    overflow:hidden !important;
+    background:#02070b !important;
+  }
+  html.dt-maximized #c, body.dt-maximized #c {
+    display:block !important;
+    position:fixed !important;
+    inset:0 !important;
+    width:100vw !important;
+    height:100vh !important;
+  }
+  html.dt-maximized #c canvas, body.dt-maximized #c canvas {
+    display:block !important;
+    position:absolute !important;
+    inset:0 !important;
+    width:100% !important;
+    height:100% !important;
+  }
+  html.dt-maximized #asset-labels, body.dt-maximized #asset-labels {
+    display:block !important;
+    position:fixed !important;
+    inset:0 !important;
+    pointer-events:none !important;
+  }
+</style>
+
+
+<script>
+/* DIGITAL TWIN ROTATION MODE */
+(function(){
+  window.POLAR_DIGITAL_TWIN_AUTO_ROTATE = true;
+  window.POLAR_DIGITAL_TWIN_REDUCED_MOTION = false;
+  window.addEventListener('message', function(ev){
+    if(ev && ev.data && ev.data.type === 'POLAR_DIGITAL_TWIN_STARTUP_LABELS'){
+      const host=document.getElementById('asset-labels');
+      if(host) host.style.display = ev.data.show ? 'block' : 'none';
+    }
+    if(ev && ev.data && ev.data.type === 'POLAR_DIGITAL_TWIN_ROTATION_MODE'){
+      window.POLAR_DIGITAL_TWIN_AUTO_ROTATE = !!ev.data.autoRotate;
+      if(window.controls && 'autoRotate' in window.controls){
+        window.controls.autoRotate = window.POLAR_DIGITAL_TWIN_AUTO_ROTATE;
+      }
+    }
+  });
+})();
+</script>
+
+</head>
+<body>
+<div id="c"></div><div id="asset-labels" aria-hidden="true"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+let sd=7;const rnd=()=>(sd=(sd*16807)%2147483647)/2147483647;
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const R=new THREE.WebGLRenderer({antialias:true});
+R.setPixelRatio(Math.min(devicePixelRatio,2));R.outputEncoding=THREE.sRGBEncoding;
+R.toneMapping=THREE.ACESFilmicToneMapping;R.toneMappingExposure=.92;R.shadowMap.enabled=true;R.shadowMap.type=THREE.PCFSoftShadowMap;
+$('c').appendChild(R.domElement);
+const S=new THREE.Scene();
+const cam=new THREE.PerspectiveCamera(42,1,1,700);
+
+/* sky */
+(()=>{const c=document.createElement('canvas');c.width=4;c.height=256;const g=c.getContext('2d'),r=g.createLinearGradient(0,0,0,256);
+r.addColorStop(0,'#16234a');r.addColorStop(.35,'#4a5688');r.addColorStop(.6,'#8a7fa6');r.addColorStop(.72,'#e6a98e');r.addColorStop(1,'#f3c9a0');
+g.fillStyle=r;g.fillRect(0,0,4,256);const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;S.background=t})();
+S.fog=new THREE.Fog(0x8c88a8,130,400);
+
+/* lights */
+S.add(new THREE.HemisphereLight(0xa9bdf0,0x3b4260,.78));
+const sun=new THREE.DirectionalLight(0xffc596,1.18);sun.position.set(80,40,-100);sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);Object.assign(sun.shadow.camera,{left:-90,right:90,top:90,bottom:-90,near:1,far:300});sun.shadow.bias=-.0005;S.add(sun);
+const fill=new THREE.DirectionalLight(0x7f9ae0,.6);fill.position.set(-30,40,60);S.add(fill);
+[[0,4,8],[10,5,-6],[-26,4,8],[40,4,0]].forEach(p=>{const l=new THREE.PointLight(0xffb55a,1.1,34);l.position.set(...p);S.add(l)});
+
+/* helpers */
+const M=(c,o={})=>new THREE.MeshStandardMaterial(Object.assign({color:c,roughness:.8,metalness:.1},o));
+const glow=(()=>{const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d'),r=g.createRadialGradient(32,32,0,32,32,32);
+r.addColorStop(0,'rgba(255,255,255,1)');r.addColorStop(.25,'rgba(255,255,255,.5)');r.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=r;g.fillRect(0,0,64,64);return new THREE.CanvasTexture(c)})();
+const spr=(col,s,x,y,z,fog=true)=>{const o=new THREE.Sprite(new THREE.SpriteMaterial({map:glow,color:col,blending:THREE.AdditiveBlending,depthWrite:false,fog}));o.scale.setScalar(s);o.position.set(x,y,z);S.add(o);return o};
+const box=(w,h,d,x,z,mat,y=0,p=S)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);m.position.set(x,y+h/2,z);p.add(m);return m};
+
+function noiseTex(base,amt,rep,dots=2500,sz=2){const c=document.createElement('canvas');c.width=c.height=256;const g=c.getContext('2d');g.fillStyle=base;g.fillRect(0,0,256,256);
+ for(let i=0;i<dots;i++){const v=Math.floor(128+(rnd()-.5)*amt*2);g.fillStyle=`rgba(${v},${v},${v+12},.2)`;g.fillRect(rnd()*256,rnd()*256,sz*(1+rnd()*3),sz*(1+rnd()*3))}
+ const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(rep,rep);t.encoding=THREE.sRGBEncoding;t.anisotropy=4;return t}
+function corr(col,_,extra={}){const c=document.createElement('canvas');c.width=c.height=128;const g=c.getContext('2d');g.fillStyle=col;g.fillRect(0,0,128,128);
+ for(let x=0;x<128;x+=8){g.fillStyle='rgba(0,0,0,.3)';g.fillRect(x,0,3,128);g.fillStyle='rgba(255,255,255,.12)';g.fillRect(x+3,0,2,128)}
+ g.fillStyle='rgba(70,45,30,.28)';for(let i=0;i<50;i++)g.fillRect(rnd()*128,rnd()*128,2+rnd()*6,1+rnd()*12);
+ const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;return new THREE.MeshStandardMaterial(Object.assign({map:t,roughness:.55,metalness:.5},extra))}
+function bld(w,h,d,x,z,wall='#58607c',cols=8,rows=2,ry=0){
+  const mk=e=>{const c=document.createElement('canvas');c.width=256;c.height=128;const g=c.getContext('2d');g.fillStyle=e?'#000':wall;g.fillRect(0,0,256,128);
+    if(!e){for(let i=0;i<256;i+=32){g.fillStyle='rgba(0,0,0,.2)';g.fillRect(i,0,2,128)}g.fillStyle='#c4572b';g.fillRect(0,118,256,6)}
+    let s=1;for(let i=0;i<cols;i++)for(let j=0;j<rows;j++){s=(s*9301+49297+i*7+j*13)%233280;const on=s/233280>.15;
+      const x0=8+i*(240/cols),y0=18+j*(96/rows),ww=240/cols-10,hh=96/rows-14;
+      if(!e){g.fillStyle='#14171f';g.fillRect(x0-2,y0-2,ww+4,hh+4)}
+      g.fillStyle=on?(e?'#ffb84d':'#ffd27a'):(e?'#000':'#2a2f44');g.fillRect(x0,y0,ww,hh)}
+    const t=new THREE.CanvasTexture(c);t.encoding=THREE.sRGBEncoding;return t};
+  const side=new THREE.MeshStandardMaterial({map:mk(0),emissiveMap:mk(1),emissive:0xffffff,emissiveIntensity:.9,roughness:.85});
+  const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),side);m.position.set(x,h/2,z);S.add(m);
+  const cap=new THREE.Mesh(new THREE.BoxGeometry(w+.5,.35,d+.5),M('#f1f5ff',{roughness:1}));cap.position.set(x,h+.17,z);S.add(cap);
+  for(let k=0;k<2;k++)box(1.2,.9,1.2,x+(k?1:-1)*w*.25,z,M('#6b7280'),h+.3);
+  if(w>12){const a=new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,4),M('#aab'));a.position.set(x+w*.3,h+2.3,z+d*.2);S.add(a)}
+  return m}
+function truck(x,z,ry=0){const g=new THREE.Group();box(3,2,2.6,0,0,M('#d9622b'),.7,g);box(5,1.6,2.6,4,0,M('#b8bfcc'),.7,g);
+ [[-.8,1.4],[-.8,-1.4],[4.4,1.4],[4.4,-1.4]].forEach(([a,b])=>{const w=new THREE.Mesh(new THREE.CylinderGeometry(.7,.7,.7,12),M('#1c1c22'));w.rotation.x=Math.PI/2;w.position.set(a,.7,b);g.add(w)});
+ g.position.set(x,0,z);g.rotation.y=ry;S.add(g)}
+
+/* ground */
+const gg=new THREE.PlaneGeometry(420,420,130,130);gg.rotateX(-Math.PI/2);
+const gp=gg.attributes.position;
+for(let i=0;i<gp.count;i++){const x=gp.getX(i),z=gp.getZ(i),d=Math.min(Math.hypot(x,z)/60,3);
+  gp.setY(i,(Math.sin(x*.21)*Math.cos(z*.17)+Math.sin(x*.06+z*.08)*2)*.12*d)}
+gg.computeVertexNormals();
+{const sn=noiseTex('#dfe8f8',60,70,6000,1.5);S.add(new THREE.Mesh(gg,M('#ffffff',{map:sn,bumpMap:sn,bumpScale:1.2,roughness:.9})))}
+for(let i=0;i<60;i++){const r=new THREE.Mesh(new THREE.DodecahedronGeometry(1,0),M('#4b4e5e',{flatShading:true}));
+  r.scale.set(.6+rnd()*1.6,.4+rnd()*.9,.6+rnd()*1.6);r.position.set(-70+rnd()*140,.2,-35+rnd()*80);S.add(r)}
+
+/* mountains */
+const rock=M('#ffffff',{map:noiseTex('#4c5679',70,3,3000,3),flatShading:true,roughness:1});
+for(let i=0;i<30;i++){const r=14+rnd()*24,h=r*(1.05+rnd()*.9),x=-190+i*13+rnd()*8,z=-125-rnd()*35;
+  const m=new THREE.Mesh(new THREE.ConeGeometry(r,h,6),rock);m.position.set(x,h/2,z);m.rotation.y=rnd()*3;S.add(m);
+  const ch=h*.42,c=new THREE.Mesh(new THREE.ConeGeometry(r*.43,ch,6),M('#e9eefc',{flatShading:true,roughness:1}));c.position.set(x,h-ch/2,z);c.rotation.y=m.rotation.y;S.add(c)}
+{const m=new THREE.Mesh(new THREE.ConeGeometry(52,72,6),M('#3f4a70',{flatShading:true}));m.position.set(25,36,-135);S.add(m);
+ const c=new THREE.Mesh(new THREE.ConeGeometry(23,31,6),M('#f1f4ff',{flatShading:true}));c.position.set(25,72-15.5,-135);S.add(c)}
+{const m=new THREE.Mesh(new THREE.CylinderGeometry(30,46,34,7),M('#58608a',{flatShading:true}));m.position.set(115,17,-105);S.add(m);
+ const c=new THREE.Mesh(new THREE.CylinderGeometry(30,31,3,7),M('#e9eefc'));c.position.set(115,35,-105);S.add(c)}
+
+/* sun + water + ice */
+spr(0xffc890,150,95,12,-150,false);spr(0xffffff,26,95,12,-150,false);
+{const w=new THREE.Mesh(new THREE.PlaneGeometry(110,55),M('#2b3b68',{roughness:.2,metalness:.7}));w.rotation.x=-Math.PI/2;w.position.set(90,.55,-55);S.add(w);
+ for(let i=0;i<9;i++)box(3+rnd()*5,1.2+rnd(),3+rnd()*4,60+rnd()*60,-40-rnd()*35,M('#e7effb'),.5)}
+
+/* main Maitri station — long elevated research building on steel stilts */
+function maitriMain(){
+  const g=new THREE.Group();
+  const wall=M('#9aa5ad',{roughness:.88,metalness:.05});
+  const roof=M('#dfe6ea',{roughness:.92});
+  const dark=M('#26313b',{roughness:.72,metalness:.18});
+  const glass=M('#213c52',{roughness:.22,metalness:.35,emissive:'#071827',emissiveIntensity:.28});
+  // steel stilts / undercroft
+  for(let i=0;i<8;i++){const x=-24+i*6.7; const leg=new THREE.Mesh(new THREE.CylinderGeometry(.22,.28,4.6,8),dark);leg.position.set(x,2.3,0);g.add(leg);
+    const foot=new THREE.Mesh(new THREE.BoxGeometry(1.1,.18,1.1),dark);foot.position.set(x,.08,0);g.add(foot)}
+  const deck=new THREE.Mesh(new THREE.BoxGeometry(49,.42,9),dark);deck.position.set(0,4.65,0);g.add(deck);
+  const body=new THREE.Mesh(new THREE.BoxGeometry(47,5.2,8.2),wall);body.position.set(0,7.45,0);g.add(body);
+  const roofM=new THREE.Mesh(new THREE.BoxGeometry(48,.42,8.8),roof);roofM.position.set(0,10.2,0);g.add(roofM);
+  // dark window ribbon with warm interior lights
+  for(let i=0;i<12;i++){const win=new THREE.Mesh(new THREE.BoxGeometry(2.8,1.5,.12),glass);win.position.set(-20+i*3.65,7.55,4.12);g.add(win);
+    const inner=new THREE.Mesh(new THREE.BoxGeometry(2.25,1.0,.05),new THREE.MeshStandardMaterial({color:'#26313b',emissive:'#f3bd72',emissiveIntensity:.16,roughness:.45}));inner.position.set(-20+i*3.65,7.55,4.18);g.add(inner)}
+  // rear windows / service vents
+  for(let i=0;i<8;i++){const win=new THREE.Mesh(new THREE.BoxGeometry(3.2,1.3,.12),glass);win.position.set(-15+i*4.3,7.4,-4.12);g.add(win)}
+  // Indian tricolour-inspired fascia, restrained and architectural
+  const bands=[['#f07b35',.16,8.9],['#f1f3f5',.16,9.0],['#4f8f57',.16,9.1]];
+  bands.forEach(([c,y,z])=>{const b=new THREE.Mesh(new THREE.BoxGeometry(47,.16,.08),M(c));b.position.set(0,5.85+(y*0),z);g.add(b)});
+  // front entrance and stair
+  const door=new THREE.Mesh(new THREE.BoxGeometry(3.2,3.5,.35),dark);door.position.set(0,6.25,4.25);g.add(door);
+  const canopy=new THREE.Mesh(new THREE.BoxGeometry(4.8,.28,2.2),roof);canopy.position.set(0,8.25,5.0);g.add(canopy);
+  for(let i=0;i<7;i++){const st=new THREE.Mesh(new THREE.BoxGeometry(4.2,.22,.6),dark);st.position.set(0,.5+i*.5,5.5-i*.25);g.add(st)}
+  // rooftop plant / vents / comms
+  for(let i=0;i<5;i++){const vent=new THREE.Mesh(new THREE.CylinderGeometry(.38,.5,1.4,12),dark);vent.position.set(-16+i*8,11.05,-.8);g.add(vent)}
+  const mast=new THREE.Mesh(new THREE.CylinderGeometry(.07,.1,6,8),dark);mast.position.set(17,13.1,0);g.add(mast);
+  for(let i=0;i<3;i++){const dish=new THREE.Mesh(new THREE.SphereGeometry(1.15,20,10,0,Math.PI*2,0,Math.PI/2),roof);dish.position.set(17+i*1.6,11.8,-1.2);dish.rotation.x=-.35;g.add(dish)}
+  // Indian flag / station identity
+  const pole=new THREE.Mesh(new THREE.CylinderGeometry(.06,.08,8,8),dark);pole.position.set(6.5,13.8,4.2);g.add(pole);
+  const fc=document.createElement('canvas');fc.width=300;fc.height=200;const fg=fc.getContext('2d');
+  fg.fillStyle='#f07b35';fg.fillRect(0,0,300,67);fg.fillStyle='#f7f7f4';fg.fillRect(0,67,300,66);fg.fillStyle='#4d9a5a';fg.fillRect(0,133,300,67);
+  fg.strokeStyle='#244a9b';fg.lineWidth=7;fg.beginPath();fg.arc(150,100,22,0,Math.PI*2);fg.stroke();
+  const flag=new THREE.Mesh(new THREE.PlaneGeometry(3.6,2.4),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(fc),side:THREE.DoubleSide}));flag.position.set(8.2,16.1,4.2);flag.rotation.y=Math.PI;g.add(flag);
+  // Maitri sign
+  const c=document.createElement('canvas');c.width=512;c.height=96;const ctx=c.getContext('2d');ctx.fillStyle='#1f2c35';ctx.fillRect(0,0,c.width,c.height);ctx.font='700 54px Manrope, sans-serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#f4f7f8';ctx.fillText('MAITRI',256,48);
+  const sign=new THREE.Mesh(new THREE.PlaneGeometry(7.5,1.4),new THREE.MeshBasicMaterial({map:new THREE.CanvasTexture(c),transparent:true}));sign.position.set(0,9.15,4.32);g.add(sign);
+  g.position.set(-4,0,5);S.add(g);
+  return g;
+}
+maitriMain();
+
+/* support buildings / containerized summer modules */
+bld(12,3.2,5,24,-7,'#707b84',4,1);
+bld(10,3.1,5,38,-5,'#65727c',3,1);
+bld(9,3,4.5,49,1,'#7a858d',3,1);
+bld(10,3.1,5,37,10,'#64717a',3,1);
+bld(8,2.8,4.2,49,13,'#707b84',2,1);
+// fuel station / workshop / pump house cluster
+bld(10,3.5,6,16,23,'#56636d',4,1);
+bld(8,3,5,3,27,'#626e76',3,1);
+bld(7,2.7,5,-24,25,'#59656e',2,1);
+box(5.5,2.2,2.5,-25,7,M('#34414a'),0);
+
+
+/* outbuildings, tents, fences */
+bld(4,2.5,3,-50,-1,'#6a7088',2,1);bld(4,2.5,3,-42,-8,'#626a84',2,1);bld(4,2.5,3,-33,-16,'#6a7088',2,1);bld(5,2.5,3,-20,-24,'#626a84',2,1);
+for(let i=0;i<7;i++){const t=new THREE.Mesh(new THREE.ConeGeometry(2.2,2.4,4),M('#4a5a3a',{roughness:1}));t.position.set(36+(i%4)*5.5,1.2,15+Math.floor(i/4)*5.5);t.rotation.y=Math.PI/4+rnd()*.3;t.scale.z=1.5;S.add(t)}
+function fence(x,z,w,d){const m=M('#8c95a6',{transparent:true,opacity:.45});[[0,-d/2,w,.12],[0,d/2,w,.12],[-w/2,0,.12,d],[w/2,0,.12,d]].forEach(([a,b,ww,dd])=>box(ww,1.6,dd,x+a,z+b,m,0))}
+fence(-44,21,14,22);fence(-6,22,26,9);
+
+/* station roads, walkways and windbreak berms */
+function path(x,z,w,d,rot=0){const m=new THREE.Mesh(new THREE.BoxGeometry(w,.08,d),M('#7e8990',{roughness:1}));m.position.set(x,.56,z);m.rotation.y=rot;S.add(m);return m}
+path(-4,14,5,38,Math.PI/2);path(13,17,5,25,0);path(31,7,5,36,Math.PI/2);path(-31,10,5,26,0);
+for(let i=0;i<9;i++){const berm=new THREE.Mesh(new THREE.BoxGeometry(7,.9,1.5),M('#cfd7dd',{roughness:1}));berm.position.set(-38+i*9,.65,31+(i%2)*2);S.add(berm)}
+// elevated service pipes / cable trays
+for(let i=0;i<4;i++){const pipe=new THREE.Mesh(new THREE.CylinderGeometry(.09,.09,18,8),M('#59656d',{metalness:.65,roughness:.35}));pipe.rotation.z=Math.PI/2;pipe.position.set(-5+i*5,2.4,18);S.add(pipe)}
+
+/* radome + towers */
+{const d=new THREE.Mesh(new THREE.SphereGeometry(3.2,24,16,0,Math.PI*2,0,Math.PI/2),M('#f4f7ff',{roughness:.5}));d.position.set(8,0,-24);S.add(d)}
+const beacons=[];
+function tower(x,z,h){const m=new THREE.Mesh(new THREE.CylinderGeometry(.3,1.7,h,4,7,true),new THREE.MeshStandardMaterial({color:'#d4dae6',wireframe:true}));
+  m.position.set(x,h/2,z);m.rotation.y=Math.PI/4;S.add(m);beacons.push(spr(0xff2a2a,4,x,h+.4,z))}
+tower(40,-26,16);tower(58,14,7);
+
+/* wind turbines */
+const hubs=[];
+function turbine(x,z,s){const g=new THREE.Group();
+  const tw=new THREE.Mesh(new THREE.CylinderGeometry(.35,.65,19,12),M('#eef2fa'));tw.position.y=9.5;g.add(tw);
+  box(1.6,1.4,3.4,0,0,M('#e3e8f2'),19,g);
+  const hub=new THREE.Group();hub.position.set(0,19.7,2);g.add(hub);
+  for(let i=0;i<3;i++){const a=new THREE.Group();a.rotation.z=i*Math.PI*2/3;const b=new THREE.Mesh(new THREE.BoxGeometry(.55,9,.14),M('#f4f7fc'));b.position.y=4.8;a.add(b);hub.add(a)}
+  g.position.set(x,0,z);g.scale.setScalar(s);g.rotation.y=.35;S.add(g);hubs.push(hub);
+  beacons.push(spr(0xff2a2a,3.4,x+Math.sin(.35)*0,19*s+1,z))}
+[[-52,-6,1],[-44,-14,.95],[-36,-22,.9],[-26,-30,.85],[-18,-36,.8]].forEach(a=>turbine(...a));
+
+/* V6 SHARED REAL-EQUIPMENT HELPERS */
+const v6Steel=M('#657178',{metalness:.72,roughness:.42});
+const v6Galvanized=M('#b8c0c4',{metalness:.78,roughness:.38});
+const v6Dark=M('#20282e',{metalness:.62,roughness:.48});
+const v6Rubber=M('#101519',{metalness:.08,roughness:.88});
+const v6Painted=M('#657784',{metalness:.22,roughness:.76});
+const v6Snow=M('#edf2f4',{roughness:1});
+const v6Glass=M('#243d4a',{metalness:.35,roughness:.22});
+const v6Safety=M('#d49a28',{metalness:.2,roughness:.58});
+const v6Red=M('#9e3028',{metalness:.2,roughness:.68});
+const v6Copper=M('#704f2f',{metalness:.72,roughness:.4});
+const v6Cell=M('#163b63',{metalness:.62,roughness:.24,emissive:'#071b31',emissiveIntensity:.18});
+const v6Cube=(w,h,d,x,y,z,mat,parent)=>{const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);o.position.set(x,y+h/2,z);parent.add(o);return o};
+const v6Cyl=(r,h,x,y,z,mat,parent,rx=0,rz=0,seg=20)=>{const o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,seg),mat);o.position.set(x,y+h/2,z);o.rotation.x=rx;o.rotation.z=rz;parent.add(o);return o};
+const v6Pipe=(a,b,r,mat,parent)=>{const A=new THREE.Vector3(...a),B=new THREE.Vector3(...b),d=B.clone().sub(A);const o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,d.length,10),mat);o.position.copy(A.clone().add(B).multiplyScalar(.5));o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());parent.add(o);return o};
+
+/* SOLAR ARRAY V6 */
+{
+  const g=new THREE.Group();
+  const frame=M('#9aa4aa',{metalness:.8,roughness:.34});
+  const v6Cell=M('#163b63',{metalness:.62,roughness:.24,emissive:'#071b31',emissiveIntensity:.18});
+  const bus=M('#c7ced2',{metalness:.75,roughness:.3});
+  const wire=M('#171d21',{metalness:.45,roughness:.5});
+  function panel(x,z){
+    const p=new THREE.Group();
+    const outer=new THREE.Mesh(new THREE.BoxGeometry(2.85,.10,1.72),frame);
+    outer.position.y=.03;p.add(outer);
+    const v6Glass=new THREE.Mesh(new THREE.BoxGeometry(2.62,.045,1.50),v6Cell);
+    v6Glass.position.y=.095;p.add(v6Glass);
+    for(let c=1;c<6;c++){const l=new THREE.Mesh(new THREE.BoxGeometry(.018,.012,1.46),bus);l.position.set(-1.31+c*.435,.125,0);p.add(l)}
+    for(let r=1;r<4;r++){const l=new THREE.Mesh(new THREE.BoxGeometry(2.56,.012,.018),bus);l.position.set(0,.126,-.75+r*.375);p.add(l)}
+    const jb=new THREE.Mesh(new THREE.BoxGeometry(.28,.10,.22),v6Dark);jb.position.set(.45,.16,.18);p.add(jb);
+    v6Pipe([.45,.16,.18],[.45,.02,.18],.012,wire,p);
+    p.position.set(x,1.55,z);p.rotation.x=-.48;g.add(p);
+  }
+  for(let r=0;r<4;r++)for(let c=0;c<7;c++)panel(c*3.05,r*2.35);
+  for(let r=0;r<5;r++){const rail=new THREE.Mesh(new THREE.BoxGeometry(21.5,.08,.07),frame);rail.position.set(9.15,1.03,r*2.05-.25);g.add(rail)}
+  for(let c=0;c<7;c++){
+    const x=c*3.05;
+    v6Pipe([x,.6,-.55],[x,1.75,0],.075,v6Galvanized,g);
+    v6Pipe([x,.6,6.8],[x,1.75,5.9],.075,v6Galvanized,g);
+    v6Pipe([x,.72,-.55],[x+1.1,1.45,6.8],.035,v6Steel,g);
+  }
+  for(let c=0;c<3;c++){
+    v6Cube(1.2,1.25,.55,3.5+c*5.7,.65,3.8,v6Dark,g);
+    for(let k=0;k<3;k++)v6Cube(.06,.18,.03,3.15+c*5.7+k*.22,1.25,4.10,v6Safety,g);
+  }
+  g.position.set(-27,0,-16);g.rotation.y=-.12;S.add(g);
+}
+
+/* realistic energy infrastructure: battery storage, generator hall, fuel farm, service yard */
+function panelCabinet(x,y,z,w=2.2,h=2.6,d=.65,mat=M('#33404a',{metalness:.55,roughness:.42}),group=S){
+  const g=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);body.position.set(x,y+h/2,z);g.add(body);
+  const door=new THREE.Mesh(new THREE.BoxGeometry(w*.72,h*.72,.035),M('#17222b',{metalness:.35,roughness:.5}));door.position.set(x,y+h*.53,z+d/2+.025);g.add(door);
+  for(let i=0;i<3;i++){const l=new THREE.Mesh(new THREE.BoxGeometry(.08,.08,.04),M(i===0?'#55d6ff':'#66727b',{emissive:i===0?'#1aa8d8':'#000',emissiveIntensity:.7}));l.position.set(x-w*.29+i*.18,y+h*.76,z+d/2+.05);g.add(l)}
+  group.add(g);return g;
+}
+
+/* BATTERY SYSTEM V6 */
+{
+  const yard=new THREE.Group();
+  const slab=new THREE.Mesh(new THREE.BoxGeometry(23,.18,14),M('#59636b',{roughness:.95}));
+  slab.position.set(-45,.58,18);yard.add(slab);
+  for(let r=0;r<2;r++){
+    const z=14+r*7;
+    const cont=new THREE.Group();
+    v6Cube(18,3.15,5.4,-45,.8,z,v6Painted,cont);
+    for(let i=0;i<8;i++)v6Cube(.11,2.95,5.48,-53+i*2.3,.92,z,v6Galvanized,cont);
+    for(let d=0;d<4;d++){
+      v6Cube(.82,2.55,.07,-51.8+d*2.2,.98,z+2.76,v6Dark,cont);
+      v6Cube(.06,2.15,.035,-51.05+d*2.2,1.18,z+2.82,v6Safety,cont);
+    }
+    for(let i=0;i<3;i++){
+      v6Cube(2.0,.55,1.45,-51+i*5,4.05,z,v6Galvanized,cont);
+      const fan=new THREE.Mesh(new THREE.CylinderGeometry(.43,.43,.10,20),v6Dark);
+      fan.rotation.x=Math.PI/2;fan.position.set(-51+i*5,4.38,z);cont.add(fan);
+    }
+    // Exposed battery rack/v6Cell bay
+    v6Cube(3.0,2.55,.18,-35.75,1.05,z,v6Dark,cont);
+    for(let rack=0;rack<3;rack++){
+      v6Cube(.08,2.15,2.35,-36.8+rack*1.0,1.25,z,v6Galvanized,cont);
+      for(let row=0;row<6;row++)v6Cube(.70,.18,2.0,-36.8+rack*1.0,1.38+row*.32,z,v6Cell,cont);
+    }
+    v6Pipe([-35.2,1.4,z+1.0],[-30,1.4,z+1.0],.10,v6Dark,cont);
+    v6Pipe([-35.2,2.1,z-1.0],[-30,2.1,z-1.0],.10,v6Dark,cont);
+    for(let i=0;i<4;i++)v6Cyl(.13,.65,-34.9+i*.38,1.0,z+2.9,v6Red,cont);
+  }
+  for(let i=0;i<3;i++){
+    v6Cube(2.2,2.8,1.5,-30+i*3.2,1.0,18,M('#59656d',{metalness:.65,roughness:.4}),yard);
+    v6Cube(1.65,2.0,.05,-30+i*3.2,1.35,18.78,v6Dark,yard);
+    for(let k=0;k<5;k++)v6Cube(.08,.12,.03,-30.6+i*3.2+k*.30,3.25,18.83,v6Safety,yard);
+  }
+  // Place the BESS in a visible service/energy yard beside the station.
+  // The internal geometry remains intact; only the whole physical yard is repositioned.
+  yard.position.set(71,0,-33);
+  S.add(yard);
+}
+
+/* DIESEL GENERATOR SYSTEM V6 */
+{
+  const plant=new THREE.Group();
+  v6Cube(31,.2,11,0,.6,25,M('#515d66',{roughness:.95}),plant);
+  for(let i=0;i<3;i++){
+    const x=-10+i*10, room=new THREE.Group();
+    v6Cube(8.5,4.5,6.2,x,.8,25,v6Painted,room);
+    for(let k=0;k<12;k++)v6Cube(.10,2.7,.07,x-3.2+k*.58,1.8,28.15,v6Dark,room);
+    v6Cube(1.65,3.0,.08,x,1.5,28.18,v6Dark,room);
+    v6Cube(1.15,2.35,.04,x,1.82,28.23,v6Glass,room);
+    // Radiator and fan
+    for(let k=0;k<12;k++)v6Cube(.10,2.5,2.55,x-3.2+k*.52,1.8,28.35,v6Galvanized,room);
+    const fan=new THREE.Mesh(new THREE.CylinderGeometry(1.05,1.05,.14,24),v6Dark);
+    fan.rotation.x=Math.PI/2;fan.position.set(x,3.15,28.46);room.add(fan);
+    for(let b=0;b<6;b++){
+      const blade=new THREE.Mesh(new THREE.BoxGeometry(.10,.72,.04),v6Galvanized);
+      blade.position.set(x,3.15,28.55);blade.rotation.z=b*Math.PI/3;room.add(blade);
+    }
+    // Actual-looking engine block and alternator silhouette
+    v6Cube(4.8,1.55,2.5,x,1.55,21.65,v6Dark,room);
+    v6Cube(2.6,1.8,1.9,x-1.05,2.25,21.65,v6Steel,room);
+    v6Cube(1.55,1.55,2.15,x+1.75,2.35,21.65,v6Galvanized,room);
+    for(let c=0;c<6;c++)v6Cyl(.17,.62,x-1.9+c*.65,3.9,20.75,v6Dark,room,0,0,14);
+    // Exhaust and manifold
+    v6Pipe([x+1.0,4.3,22.2],[x+2.4,5.2,22.2],.12,v6Copper,room);
+    v6Pipe([x+2.4,5.2,22.2],[x+2.4,8.1,22.2],.22,v6Dark,room);
+    v6Cube(.75,.12,1.0,x+2.4,8.05,22.2,v6Snow,room);
+    // Fuel/coolant/electrical connections
+    v6Pipe([x-2.0,1.3,21.4],[x-2.0,1.3,18.8],.08,v6Copper,room);
+    v6Pipe([x+2.0,1.15,21.4],[x+2.0,1.15,18.8],.08,v6Steel,room);
+    v6Pipe([x+3.0,2.2,22.0],[x+5.5,2.2,22.0],.12,v6Dark,room);
+    // skid and vibration mounts
+    v6Cube(7.3,.18,4.5,x,.75,25,v6Dark,room);
+    [-2.7,2.7].forEach(dx=>v6Cube(.45,.32,.65,x+dx,.62,23.3,v6Rubber,room));
+    plant.add(room);
+  }
+  // Dedicated synchronization/switchboard building
+  v6Cube(8.5,3.5,5.5,17,1.0,25,v6Painted,plant);
+  for(let k=0;k<5;k++)v6Cube(1.1,2.4,.08,14.1+k*1.45,1.55,27.78,v6Dark,plant);
+  for(let k=0;k<5;k++)v6Cube(.08,.10,.03,14.45+k*1.45,3.55,27.84,v6Safety,plant);
+  S.add(plant);
+}
+
+/* fuel farm: horizontal storage tanks on saddles, bund wall, pipe manifold and access ladder */
+{
+  const farm=new THREE.Group();
+  const bund=new THREE.Mesh(new THREE.BoxGeometry(29,.7,22),M('#7d8790',{roughness:1}));bund.position.set(38,.82,14);farm.add(bund);
+  const floor=new THREE.Mesh(new THREE.BoxGeometry(27,.18,20),M('#414b53',{roughness:1}));floor.position.set(38,1.18,14);farm.add(floor);
+  for(let r=0;r<2;r++)for(let c=0;c<3;c++){
+    const x=29+r*18,z=9+c*5;
+    const tank=new THREE.Mesh(new THREE.CylinderGeometry(2.05,2.05,10.5,32),M(r?'#b8c0c5':'#9faab0',{metalness:.65,roughness:.38}));tank.rotation.z=Math.PI/2;tank.position.set(x,3.7,z);farm.add(tank);
+    // end cap
+    const cap=new THREE.Mesh(new THREE.CircleGeometry(2.0,32),M('#6f7b82',{metalness:.7,roughness:.34}));cap.rotation.y=Math.PI/2;cap.position.set(x-5.27,3.7,z);farm.add(cap);
+    // saddle supports
+    for(let sx of [-2.8,2.8]){const saddle=new THREE.Mesh(new THREE.BoxGeometry(.75,2.0,3.0),M('#39444c',{metalness:.7,roughness:.4}));saddle.position.set(x+sx,2.0,z);farm.add(saddle)}
+    // level gauge / manhole
+    const neck=new THREE.Mesh(new THREE.CylinderGeometry(.35,.35,.65,16),M('#39444c',{metalness:.75}));neck.position.set(x,6.0,z);farm.add(neck);
+    const hatch=new THREE.Mesh(new THREE.CylinderGeometry(.6,.6,.12,20),M('#4a555d',{metalness:.8}));hatch.position.set(x,6.35,z);farm.add(hatch);
+    // valve + pipe connection
+    const valve=new THREE.Mesh(new THREE.CylinderGeometry(.22,.22,.7,12),M('#b4472e',{metalness:.7}));valve.rotation.z=Math.PI/2;valve.position.set(x+5.35,2.8,z);farm.add(valve);
+  }
+  // manifold and transfer line
+  const manifold=new THREE.Mesh(new THREE.CylinderGeometry(.16,.16,15,10),M('#b06a35',{metalness:.75,roughness:.35}));manifold.rotation.z=Math.PI/2;manifold.position.set(38,1.7,21.2);farm.add(manifold);
+  for(let r=0;r<2;r++)for(let c=0;c<3;c++){const x=29+r*18,z=9+c*5;const pipe=new THREE.Mesh(new THREE.CylinderGeometry(.11,.11,6,8),M('#9a6238',{metalness:.7}));pipe.rotation.z=Math.PI/2;pipe.position.set(x+5.2,2.8,z);farm.add(pipe)}
+  // pump house
+  const pump=new THREE.Mesh(new THREE.BoxGeometry(5,3.3,4),M('#56636b',{metalness:.45,roughness:.6}));pump.position.set(23,2.8,23);farm.add(pump);
+  const pumpdoor=new THREE.Mesh(new THREE.BoxGeometry(1.5,2.5,.08),M('#26333b',{metalness:.4}));pumpdoor.position.set(23,2.2,25.03);farm.add(pumpdoor);
+  // warning bollards and fence
+  for(let i=0;i<8;i++){const x=24+i*4;const b=new THREE.Mesh(new THREE.CylinderGeometry(.08,.1,1.3,8),M('#d79b25'));b.position.set(x,1.9,25.5);farm.add(b)}
+  S.add(farm);
+}
+
+/* station vehicles / service equipment */
+truck(14,32);truck(-34,-6,.4);
+
+/* electrical substation: transformer, switchgear and realistic utility poles/cable */
+{
+  const grid=new THREE.Group();
+  const slab=new THREE.Mesh(new THREE.BoxGeometry(24,.2,13),M('#555f67',{roughness:1}));slab.position.set(-8,.6,7);grid.add(slab);
+  // transformer tank + bushings
+  const tr=new THREE.Mesh(new THREE.BoxGeometry(4.8,3.1,3.8),M('#6d777c',{metalness:.7,roughness:.38}));tr.position.set(-8,2.25,7);grid.add(tr);
+  for(let i=-1;i<=1;i++){const b=new THREE.Mesh(new THREE.CylinderGeometry(.18,.25,1.8,12),M('#e2e5e6',{metalness:.35,roughness:.3}));b.position.set(-9+i,4.65,7);grid.add(b)}
+  for(let i=0;i<4;i++) panelCabinet(-15+i*2.2,1,11,1.5,2.7,1.1,M('#36434c',{metalness:.7,roughness:.4}),grid);
+  // v6Steel poles carrying distribution cable
+  for(let i=0;i<4;i++){
+    const x=-20+i*9;
+    const pole=new THREE.Mesh(new THREE.CylinderGeometry(.11,.16,7.5,10),M('#424c54',{metalness:.7,roughness:.4}));pole.position.set(x,4.2,4);grid.add(pole);
+    const cross=new THREE.Mesh(new THREE.BoxGeometry(3.2,.12,.12),M('#424c54',{metalness:.7}));cross.position.set(x,7.5,4);grid.add(cross);
+    for(let j=-1;j<=1;j++){const ins=new THREE.Mesh(new THREE.CylinderGeometry(.07,.07,.42,8),M('#dce2e6'));ins.position.set(x+j*1.15,7.85,4);grid.add(ins)}
+  }
+  S.add(grid);
+}
+
+/* realistic station roads: compacted v6Snow, v6Dark wheel tracks, junction markings and service shoulders */
+function road(x,z,w,d,rot=0){
+  const g=new THREE.Group();
+  const base=new THREE.Mesh(new THREE.BoxGeometry(w,.10,d),M('#9da8b0',{roughness:1}));g.add(base);
+  const lane=new THREE.Mesh(new THREE.BoxGeometry(w*.68,.035,d),M('#5b6570',{roughness:1}));lane.position.y=.07;g.add(lane);
+  for(const off of [-w*.2,w*.2]){
+    const track=new THREE.Mesh(new THREE.BoxGeometry(.42,.045,d*.92),M('#303a43',{roughness:1}));track.position.set(off,.1,0);g.add(track);
+  }
+  g.position.set(x,.56,z);g.rotation.y=rot;S.add(g);return g;
+}
+road(-4,14,7,42,Math.PI/2);road(13,17,7,28,0);road(31,7,7,42,Math.PI/2);road(-31,10,7,30,0);road(5,8,7,24,Math.PI/4);
+/* v6Snow berms / retaining banks */
+for(let i=0;i<10;i++){const berm=new THREE.Mesh(new THREE.BoxGeometry(8,.95,1.8),M('#cbd4db',{roughness:1}));berm.position.set(-39+i*8,.85,34+(i%2)*2);S.add(berm)}
+
+/* electrical cable routes: insulated overhead conductors and grounded cable trench */
+function cable(a,b,col='#252e35',thick=.07){const v1=new THREE.Vector3(...a),v2=new THREE.Vector3(...b),mid=v1.clone().add(v2).multiplyScalar(.5);mid.y-=1.2;const cv=new THREE.CatmullRomCurve3([v1,mid,v2]);const tube=new THREE.Mesh(new THREE.TubeGeometry(cv,32,thick,6),M(col,{metalness:.65,roughness:.35}));S.add(tube)}
+cable([-20,7.7,4],[-8,6.2,7]);cable([-8,6.2,7],[0,7.7,4]);cable([0,7.7,4],[12,6.8,8]);
+
+/* lamp posts */
+for(let i=0;i<10;i++){const x=-36+i*8,z=13+(i%2)*2,p=new THREE.Mesh(new THREE.CylinderGeometry(.08,.1,3.6),M('#333a48'));p.position.set(x,1.8,z);S.add(p);spr(0xffa940,3.6,x,3.8,z)}
+
+/* electrical current flow: directional particles follow physical generation -> switchgear -> station routes */
+const flows=[];
+function flow(pts,col,n=6){const cv=new THREE.CatmullRomCurve3(pts.map(p=>new THREE.Vector3(...p))),c=new THREE.Color(col);
+  S.add(new THREE.Mesh(new THREE.TubeGeometry(cv,70,.11,6),new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:.72})));
+  const sp=[];for(let i=0;i<n;i++)sp.push(spr(c,1.6,0,0,0));flows.push({cv,sp})}
+flow([[-52,2.0,-6],[-45,2.0,2],[-30,2.0,7],[-18,2.0,7],[-8,2.0,7]],'#3ac7ff',7);      // wind
+flow([[-27,2.0,-16],[-24,2.0,-9],[-15,2.0,-2],[-8,2.0,7]],'#ffd15c',5);             // solar
+flow([[-10,2.0,25],[0,2.0,18],[2,2.0,13],[-8,2.0,7]],'#ff6b3d',5);                   // diesel
+flow([[-45,4.0,18],[-30,4.0,16],[-18,3.0,12],[-8,2.0,7]],'#5ce0ff',5);               // battery
+flow([[-8,2.0,7],[-4,2.0,7],[0,2.0,7],[5,2.0,8],[10,2.0,8]],'#7df0a1',8);            // station load
+flow([[38,2.0,9],[30,2.0,9],[20,2.0,8],[10,2.0,8]],'#f1b24b',5);                    // fuel transfer
+
+
+/* ================= MAITRI REALISM V4 =================
+   Visual-only realism layer. No dashboard cards or DHRUVA data logic.
+   The scene is Maitri-inspired, based on the documented station composition:
+   elevated main building, fuel farm, fuel station, pump house, summer camp,
+   containerized modules, rocky terrain and distributed infrastructure.
+*/
+{
+  const V4 = new THREE.Group();
+  V4.name = 'MAITRI_REALISM_V4';
+  S.add(V4);
+
+  const v6Steel = M('#4d5961',{metalness:.72,roughness:.42});
+  const darkSteel = M('#263139',{metalness:.72,roughness:.38});
+  const v6Galvanized = M('#a9b2b7',{metalness:.68,roughness:.45});
+  const v6Rubber = M('#171c20',{metalness:.15,roughness:.82});
+  const snowM = M('#eef3f5',{roughness:.98});
+  const v6Safety = M('#d69a2c',{metalness:.28,roughness:.62});
+  const v6Red = M('#9e3e31',{metalness:.25,roughness:.65});
+  const blue = M('#31546a',{metalness:.18,roughness:.42});
+
+  function bx(w,h,d,x,y,z,m,p=V4){
+    const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);
+    o.position.set(x,y+h/2,z); p.add(o); return o;
+  }
+  function cy(r,h,x,y,z,m,p=V4,rx=0,rz=0,seg=16){
+    const o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,seg),m);
+    o.position.set(x,y+h/2,z); o.rotation.x=rx; o.rotation.z=rz; p.add(o); return o;
+  }
+  function tube(a,b,r,m,p=V4){
+    const A=new THREE.Vector3(...a), B=new THREE.Vector3(...b), d=B.clone().sub(A);
+    const o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,d.length,8),m);
+    o.position.copy(A.clone().add(B).multiplyScalar(.5));
+    o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());
+    p.add(o); return o;
+  }
+
+  // --- Main-building undercroft: realistic bracing, cross-members and service runs.
+  const under = new THREE.Group();
+  for(let i=0;i<8;i++){
+    const x=-28+i*6.7;
+    tube([x,0.7,4.0],[x,4.5,4.0],.12,darkSteel,under);
+    tube([x-.85,0.7,4.0],[x,4.5,4.0],.065,v6Steel,under);
+    tube([x+.85,0.7,4.0],[x,4.5,4.0],.065,v6Steel,under);
+    bx(1.3,.14,1.3,x,.52,4.0,darkSteel,under);
+  }
+  // Horizontal service rack below the station.
+  bx(44,.16,.65,0,2.05,3.45,v6Steel,under);
+  for(let i=0;i<10;i++) tube([-21+i*4.6,2.15,3.15],[-21+i*4.6,2.15,4.0],.055,v6Galvanized,under);
+  S.add(under);
+
+  // --- Exterior HVAC and heating/cooling ducts on main building.
+  const hvac = new THREE.Group();
+  for(let i=0;i<6;i++){
+    const x=-19+i*7.6;
+    bx(1.55,.65,1.15,x,10.65,2.15,v6Galvanized,hvac);
+    cy(.28,.16,x,11.28,2.15,darkSteel,hvac,Math.PI/2,0,16);
+    for(let k=0;k<5;k++) bx(.035,.42,.75,x-.48+k*.24,10.9,1.55,darkSteel,hvac);
+  }
+  // Two insulated exhaust/heat-recovery ducts.
+  [ -11, 11 ].forEach(x=>{
+    cy(.24,2.2,x,10.5,-2.0,v6Galvanized,hvac);
+    cy(.34,.12,x,12.62,-2.0,darkSteel,hvac);
+    tube([x,11.0,-2.0],[x,10.3,-3.0],.12,v6Galvanized,hvac);
+  });
+  S.add(hvac);
+
+  // --- Main entrance: enclosed vestibule, landing, railings and v6Snow skirt.
+  const ent = new THREE.Group();
+  bx(4.6,2.9,2.6,0,4.55,9.35,darkSteel,ent);
+  bx(3.4,2.3,.12,0,4.85,10.68,blue,ent);
+  for(let i=0;i<8;i++) bx(4.0,.20,.55,0,.65+i*.48,11.2-i*.30,darkSteel,ent);
+  for(let side of [-1,1]){
+    tube([side*2.15,1.0,11.2],[side*2.15,4.0,10.15],.035,v6Galvanized,ent);
+    tube([side*2.15,4.0,10.15],[side*2.15,4.35,9.65],.035,v6Galvanized,ent);
+  }
+  // Door lamps.
+  [-1,1].forEach(side=>{
+    const lamp = new THREE.Mesh(
+      new THREE.SphereGeometry(.10,10,8),
+      new THREE.MeshStandardMaterial({color:0xffb24a,emissive:0x6b2f08,emissiveIntensity:.8})
+    );
+    lamp.position.set(side*1.9,7.15,10.65); ent.add(lamp);
+  });
+  S.add(ent);
+
+  // --- Summer camp / container modules: connected walkways and realistic doors.
+  const camp = new THREE.Group();
+  const moduleXs=[22,33,44,55];
+  moduleXs.forEach((x,i)=>{
+    bx(9.2,3.0,5.0,x,0.75,-8+i*5.4,M(i%2?'#6f7a82':'#66737b',{metalness:.35,roughness:.7}),camp);
+    // seam ribs
+    for(let k=-3;k<=3;k++) bx(.07,2.8,.10,x+k*1.15,0.85,-8+i*5.4+2.52,darkSteel,camp);
+    // access door
+    bx(1.3,2.25,.08,x,1.1,-8+i*5.4+2.56,darkSteel,camp);
+    // small window
+    bx(1.9,1.0,.06,x-2.25,1.75,-8+i*5.4+2.60,blue,camp);
+    // roof vents
+    for(let k=-1;k<=1;k++) cy(.16,.48,x+k*2.4,3.82,-8+i*5.4,darkSteel,camp);
+  });
+  // Raised covered walkway linking modules.
+  bx(42,.18,1.6,38,4.05,1.5,darkSteel,camp);
+  for(let x=18;x<=58;x+=4) {
+    tube([x,1.0,1.0],[x,4.05,1.0],.045,v6Galvanized,camp);
+    tube([x,4.55,1.0],[x+2,4.55,1.0],.045,v6Galvanized,camp);
+  }
+  S.add(camp);
+
+  // --- Fuel farm v6Safety and service details: containment, ladders, valves, grounding.
+  const fuel = new THREE.Group();
+  bx(31,.22,23,38,1.30,14,darkSteel,fuel);
+  // Access ladder and catwalk around tank line.
+  bx(2.0,.16,20,24,5.85,14,v6Galvanized,fuel);
+  tube([23.0,5.95,4.5],[23.0,7.9,4.5],.045,v6Steel,fuel);
+  tube([23.0,7.9,4.5],[25.0,7.9,4.5],.045,v6Steel,fuel);
+  for(let i=0;i<7;i++) tube([23.0,6.1+i*.25,4.5],[24.9,6.1+i*.25,4.5],.022,v6Steel,fuel);
+  // Earthing rods / bonding straps at tank positions.
+  [29,47].forEach(x=>{
+    [9,14,19].forEach(z=>{
+      tube([x+5.0,1.2,z],[x+5.0,.15,z],.025,darkSteel,fuel);
+      bx(.22,.35,.22,x+5.0,.05,z,v6Safety,fuel);
+    });
+  });
+  // Spill response cabinet + fire points.
+  [27,52].forEach(x=>{
+    bx(.8,1.8,.55,x,1.55,25.2,v6Red,fuel);
+    bx(.28,.32,.08,x+.22,2.45,25.53,v6Safety,fuel);
+  });
+  S.add(fuel);
+
+  // --- Generator complex realism: radiator fans, muffler piping, service cabinets.
+  const gens = new THREE.Group();
+  [-10,0,10].forEach(x=>{
+    // Radiator fan housings.
+    for(let k=0;k<3;k++){
+      const fan = new THREE.Mesh(
+        new THREE.CylinderGeometry(.48,.48,.10,18),
+        M('#20282e',{metalness:.78,roughness:.32})
+      );
+      fan.rotation.x=Math.PI/2; fan.position.set(x-2.8+k*1.15,3.25,28.18); gens.add(fan);
+    }
+    // Muffler and insulated exhaust section.
+    cy(.42,.70,x+2.5,8.9,25,darkSteel,gens);
+    tube([x+2.5,9.5,25],[x+2.5,10.8,25],.18,v6Galvanized,gens);
+    // Service access cabinet.
+    bx(1.2,1.6,.15,x-3.1,1.0,28.22,darkSteel,gens);
+    for(let k=0;k<3;k++) bx(.07,.9,.03,x-3.35+k*.32,1.35,28.31,v6Safety,gens);
+  });
+  // Generator yard cable trench.
+  bx(28,.12,1.2,0,1.0,17.0,darkSteel,gens);
+  for(let x=-11;x<=11;x+=2.2) tube([x,1.1,17.0],[x,1.1,19.0],.055,cable?darkSteel:darkSteel,gens);
+  S.add(gens);
+
+  // --- Electrical yard: insulators, busbars, fencing and warning signage.
+  const elec = new THREE.Group();
+  // Fence line around transformer/switchgear.
+  for(let x=-21;x<=5;x+=3.2){
+    cy(.055,2.0,x,.7,11.2,v6Galvanized,elec);
+    if(x<5) tube([x,2.45,11.2],[x+3.2,2.45,11.2],.025,v6Galvanized,elec);
+  }
+  // Busbars.
+  [-1,0,1].forEach(y=>{
+    tube([-18,4.5+y*.35,8.5],[2,4.5+y*.35,8.5],.045,v6Steel,elec);
+  });
+  // Insulator strings.
+  [-15,-8,-1].forEach(x=>{
+    for(let i=0;i<4;i++) cy(.075,.28,x,4.7+i*.32,8.5,v6Galvanized,elec);
+  });
+  // Hazard signs.
+  [-17,-8,0].forEach(x=>{
+    bx(.75,.75,.06,x,2.0,11.28,v6Safety,elec);
+  });
+  S.add(elec);
+
+  // --- Lake-water / utility pump house: intake pipe and insulated line.
+  const pump = new THREE.Group();
+  bx(6,3.4,5,19,.7,28,M('#68757d',{metalness:.35,roughness:.68}),pump);
+  bx(1.6,2.4,.08,19,1.2,30.55,darkSteel,pump);
+  bx(2.8,.8,.12,19,2.1,30.62,blue,pump);
+  tube([19,1.2,33],[19,1.2,45],.16,v6Galvanized,pump);
+  tube([19,1.2,45],[32,1.2,50],.16,v6Galvanized,pump);
+  // Insulation bands.
+  for(let i=0;i<5;i++) cy(.22,.08,19,1.2,34+i*2.2,snowM,pump,Math.PI/2);
+  S.add(pump);
+
+  // --- Communications mast: dish, GPS/AWS-style weather instruments and cable run.
+  const comm = new THREE.Group();
+  cy(.09,8.0,11,.8,2.0,v6Steel,comm);
+  for(let i=0;i<4;i++) tube([10.3,.9+i*1.8,2.0],[11.7,.9+i*1.8,2.0],.025,v6Galvanized,comm);
+  const dish = new THREE.Mesh(
+    new THREE.SphereGeometry(1.35,24,12,0,Math.PI*2,0,Math.PI/2),
+    M('#d6dde1',{metalness:.5,roughness:.38})
+  );
+  dish.position.set(11,7.4,2.0); dish.rotation.x=-.45; comm.add(dish);
+  cy(.045,2.4,11,7.8,2.0,darkSteel,comm);
+  // AWS mast + anemometer cups.
+  cy(.05,4.5,14,.8,2.0,v6Galvanized,comm);
+  for(let i=0;i<4;i++){
+    const arm=new THREE.Mesh(new THREE.BoxGeometry(1.2,.035,.035),v6Steel);
+    arm.position.set(14,.8+4.5,2.0); arm.rotation.y=i*Math.PI/2; comm.add(arm);
+    cy(.08,.10,14+Math.cos(i*Math.PI/2)*.6,5.3,2.0+Math.sin(i*Math.PI/2)*.6,v6Safety,comm);
+  }
+  S.add(comm);
+
+  // --- Realistic logistics yard: pallets, drums, cargo cases, v6Snow fencing.
+  const logistics = new THREE.Group();
+  for(let i=0;i<8;i++){
+    const x=3+(i%4)*2.1, z=-14+Math.floor(i/4)*2.2;
+    bx(1.45,.18,1.15,x,.62,z,M('#5b4430',{roughness:.95}),logistics);
+    for(let k=0;k<3;k++) bx(.08,.65,.95,x-.5+k*.5,.8,z,darkSteel,logistics);
+  }
+  for(let i=0;i<6;i++) cy(.32,.85,12+i*.9,.7,-15,M(i%2?'#59656c':'#8a6a3b',{metalness:.25,roughness:.8}),logistics);
+  // Wind/v6Snow fence.
+  for(let i=0;i<10;i++){
+    const x=-34+i*3.2;
+    tube([x,.7,-19],[x,.7,-17],.035,v6Steel,logistics);
+    tube([x,2.7,-19],[x,2.7,-17],.035,v6Steel,logistics);
+    bx(.08,2.0,1.9,x,.75,-18,snowM,logistics);
+  }
+  S.add(logistics);
+
+  // --- Snow accumulation: low, irregular banks around fixed infrastructure.
+  const drifts = [
+    [-25,.35,3.5,9,.45,2.1], [5,.28,3.0,7,.35,1.8],
+    [22,.22,-3.0,10,.30,1.8], [50,.20,17,8,.35,1.8],
+    [-1,.20,28,12,.35,1.7], [-30,.18,-12,8,.30,1.8]
+  ];
+  drifts.forEach(([x,y,z,sx,sy,sz])=>{
+    const g=new THREE.SphereGeometry(1,18,9);
+    const o=new THREE.Mesh(g,snowM); o.scale.set(sx,sy,sz); o.position.set(x,y,z); V4.add(o);
+  });
+
+  // --- Ground rock realism: darker exposed Schirmacher-style outcrops.
+  for(let i=0;i<34;i++){
+    const x=-65+rnd()*125, z=-22+rnd()*72;
+    if(Math.hypot(x+4,z-5)<18) continue;
+    const r=new THREE.Mesh(
+      new THREE.DodecahedronGeometry(.8+rnd()*1.8,0),
+      M(rnd()>.5?'#626a70':'#4d565d',{flatShading:true,roughness:1})
+    );
+    r.scale.set(1.3,.55,.9); r.position.set(x,.15+rnd()*.25,z); r.rotation.y=rnd()*Math.PI; V4.add(r);
+  }
+
+  // --- Subtle industrial lighting: physically placed lamps, no gaming-style neon.
+  [[-16,3,11],[0,3,11],[16,3,11],[31,4,24],[0,4,28],[45,4,25]].forEach(([x,y,z])=>{
+    const p=new THREE.PointLight(0xffd39a,.35,12);
+    p.position.set(x,y,z); V4.add(p);
+  });
+}
+
+
+/* v6Snow */
+const N=900,sp=new Float32Array(N*3);for(let i=0;i<N;i++){sp[i*3]=-80+rnd()*160;sp[i*3+1]=rnd()*50;sp[i*3+2]=-60+rnd()*110}
+const snowG=new THREE.BufferGeometry();snowG.setAttribute('position',new THREE.BufferAttribute(sp,3));
+S.add(new THREE.Points(snowG,new THREE.PointsMaterial({color:0xffffff,size:.28,transparent:true,opacity:.65})));
+
+/* DHRUVA owns the operational cards; the 3D twin stays visually clean. */
+const LB=[];
+S.traverse(o=>{if(o.isMesh){o.receiveShadow=true;o.castShadow=!/Plane|Tube/.test(o.geometry.type)}});
+
+/* orbit */
+let th=.1,ph=1.06,rad=92,dth=0,dph=0,drag=false,lx=0,ly=0;
+const tgt=new THREE.Vector3(0,1,-2);
+R.domElement.addEventListener('pointerdown',e=>{drag=true;lx=e.clientX;ly=e.clientY;R.domElement.setPointerCapture(e.pointerId)});
+addEventListener('pointerup',()=>drag=false);
+addEventListener('pointermove',e=>{if(!drag)return;th-=(e.clientX-lx)*.005;ph=Math.min(1.35,Math.max(.7,ph-(e.clientY-ly)*.004));lx=e.clientX;ly=e.clientY});
+addEventListener('wheel',e=>{rad=Math.min(150,Math.max(40,rad+e.deltaY*.05))},{passive:true});
+function size(){const w=innerWidth,h=innerHeight;document.documentElement.style.setProperty('--fs',Math.max(9.5,Math.min(16,w*.0085))+'px');R.setSize(w,h);cam.aspect=w/h;cam.fov=w/h<1?70:42;cam.updateProjectionMatrix()}
+addEventListener('resize',size);size();
+
+/* auto-rotate tab */
+let auto=(!reduce && window.POLAR_DIGITAL_TWIN_AUTO_ROTATE !== false),dir=1,prev=0;
+const v=new THREE.Vector3(),clock=new THREE.Clock();
+function tick(){requestAnimationFrame(tick);const t=clock.getElapsedTime(),dt=Math.min(t-prev,.1);prev=t;
+  auto = !reduce && window.POLAR_DIGITAL_TWIN_AUTO_ROTATE !== false;
+  if(auto&&!drag){th+=dir*dt*.12;if(th>1.15){th=1.15;dir=-1}if(th<-1.15){th=-1.15;dir=1}}
+  const a=th;
+  cam.position.set(tgt.x+rad*Math.sin(ph)*Math.sin(a),tgt.y+rad*Math.cos(ph),tgt.z+rad*Math.sin(ph)*Math.cos(a));cam.lookAt(tgt);
+  if(!reduce){
+    hubs.forEach((h,i)=>h.rotation.z=t*(.9+i*.05));
+    flows.forEach(f=>f.sp.forEach((s,i)=>s.position.copy(f.cv.getPoint((t*.1+i/f.sp.length)%1))));
+    beacons.forEach((b,i)=>b.material.opacity=.4+.6*Math.abs(Math.sin(t*1.6+i)));
+    const p=snowG.attributes.position;for(let i=0;i<N;i++){let y=p.getY(i)-.04,x=p.getX(i)+.03;if(y<0)y=50;if(x>80)x=-80;p.setY(i,y);p.setX(i,x)}p.needsUpdate=true}
+  R.render(S,cam);
+}
+tick();
+
+
+/* DHRUVA telemetry bridge — React/backend owns authoritative state. */
+window.POLAR_EMS_LIVE_STATE={mode:'ONLINE',backendConnected:false};
+window.POLAR_EMS_FLOW_INTENSITY=1;
+window.addEventListener('message',(event)=>{
+  const d=event.data;
+  if(!d || d.type!=='POLAR_EMS_TELEMETRY') return;
+  window.POLAR_EMS_LIVE_STATE=d;
+  const load=Math.max(0,Number(d.power?.loadKw)||0);
+  const gen=Math.max(0,(Number(d.power?.windKw)||0)+(Number(d.power?.solarKw)||0)+(Number(d.power?.dieselKw)||0));
+  window.POLAR_EMS_FLOW_INTENSITY=.7+Math.min(1.0,gen>0?load/gen:.2)*.45;
+});
+
+/* ================= MAITRI REALISM V5 =================
+   Detailed industrial/architectural realism pass.
+   No dashboard cards. No DHRUVA data logic.
+*/
+(function(){
+  const V5 = new THREE.Group();
+  V5.name = 'MAITRI_REALISM_V5_DETAIL';
+  S.add(V5);
+
+  const v6Steel = M('#657178',{metalness:.72,roughness:.42});
+  const v6Galvanized = M('#b8c0c4',{metalness:.78,roughness:.38});
+  const v6Dark = M('#20282e',{metalness:.62,roughness:.48});
+  const v6Rubber = M('#101519',{metalness:.08,roughness:.88});
+  const concrete = M('#777d80',{metalness:.05,roughness:.96});
+  const v6Painted = M('#657784',{metalness:.22,roughness:.76});
+  const v6Snow = M('#edf2f4',{roughness:1});
+  const v6Glass = M('#243d4a',{metalness:.35,roughness:.22});
+  const v6Safety = M('#d49a28',{metalness:.2,roughness:.58});
+  const hazard = M('#9e3028',{metalness:.2,roughness:.68});
+  const v6Copper = M('#704f2f',{metalness:.72,roughness:.4});
+
+  const cube=(w,h,d,x,y,z,mat,parent=V5)=>{
+    const o=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat);
+    o.position.set(x,y+h/2,z); parent.add(o); return o;
+  };
+  const cyl=(r,h,x,y,z,mat,parent=V5,rotX=0,rotZ=0,segments=20)=>{
+    const o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,h,segments),mat);
+    o.position.set(x,y+h/2,z); o.rotation.x=rotX; o.rotation.z=rotZ; parent.add(o); return o;
+  };
+  const pipe=(a,b,r,mat,parent=V5)=>{
+    const A=new THREE.Vector3(...a), B=new THREE.Vector3(...b), d=B.clone().sub(A);
+    const o=new THREE.Mesh(new THREE.CylinderGeometry(r,r,d.length,10),mat);
+    o.position.copy(A.clone().add(B).multiplyScalar(.5));
+    o.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());
+    parent.add(o); return o;
+  };
+
+  // ---------- MAIN STATION ARCHITECTURE ----------
+  const arch=new THREE.Group();
+  // façade panel seams and service doors
+  [-22,-15,-8,-1,6,13,20].forEach(x=>{
+    v6Cube(.055,5.6,.04,x,5.0,4.55,v6Dark,arch);
+  });
+  [-18,-6,6,18].forEach(x=>{
+    v6Cube(1.65,2.55,.07,x,5.7,4.61,v6Dark,arch);
+    v6Cube(1.38,2.25,.03,x,5.85,4.66,v6Glass,arch);
+    v6Cube(.08,2.05,.04,x+.58,5.95,4.69,v6Safety,arch);
+  });
+  // façade cable trays
+  v6Pipe([-25,7.0,4.72],[25,7.0,4.72],.035,v6Galvanized,arch);
+  v6Pipe([-25,6.7,4.76],[-8,6.7,4.76],.025,v6Dark,arch);
+  v6Pipe([2,6.7,4.76],[25,6.7,4.76],.025,v6Dark,arch);
+
+  // roof service platforms, ladders and vents
+  v6Cube(30,.16,3.0,0,11.2,1.1,v6Galvanized,arch);
+  for(let x=-13;x<=13;x+=4.3){
+    v6Cube(.8,.45,.8,x,11.35,1.9,v6Dark,arch);
+    for(let k=0;k<5;k++) v6Cube(.035,.36,.62,x-.28+k*.14,11.42,1.48,v6Steel,arch);
+  }
+  for(let x of [-20,20]){
+    v6Pipe([x,11.3,2.1],[x,14.2,2.1],.055,v6Galvanized,arch);
+    v6Pipe([x-.35,11.3,2.1],[x-.35,14.2,2.1],.035,v6Steel,arch);
+    v6Pipe([x-.35,14.2,2.1],[x,14.2,2.1],.035,v6Steel,arch);
+  }
+  // v6Snow caps along roof edges
+  v6Cube(30,.13,.65,0,14.15,3.95,v6Snow,arch);
+  v6Cube(30,.13,.65,0,14.15,-.85,v6Snow,arch);
+  V5.add(arch);
+
+
+
+  // ---------- ELECTRICAL SUBSTATION ----------
+  const sub=new THREE.Group();
+  v6Cube(24,.12,15,-5,.25,8.0,concrete,sub);
+  // transformer
+  v6Cube(4.2,3.0,3.4,-8,1.0,10.0,v6Dark,sub);
+  for(let i=0;i<8;i++) v6Cube(.12,1.8,3.0,-9.7+i*.48,1.45,10.2,v6Galvanized,sub);
+  // cooling tubes
+  for(let x=-9.2;x<=-6.8;x+=.6) v6Pipe([x,1.4,8.35],[x,3.2,8.35],.045,v6Galvanized,sub);
+  // switchgear line-up
+  [-2,2,6].forEach(x=>{
+    v6Cube(2.7,2.8,2.0,x,1.0,10.5,v6Painted,sub);
+    for(let k=0;k<5;k++) v6Cube(.10,1.9,.10,x-1.0+k*.5,1.45,11.55,v6Safety,sub);
+  });
+  // busbars + insulators
+  [-1,0,1].forEach(row=>{
+    v6Pipe([-11,5.0+row*.55,7], [10,5.0+row*.55,7], .045, v6Copper, sub);
+    for(let x=-10;x<=9;x+=3.2) v6Cyl(.08,.55,x,4.45+row*.55,7,v6Galvanized,sub);
+  });
+  // security fence
+  for(let x=-16;x<=12;x+=2.5){
+    v6Pipe([x,.4,4.2],[x,2.5,4.2],.025,v6Galvanized,sub);
+    if(x<12) v6Pipe([x,2.4,4.2],[x+2.5,2.4,4.2],.025,v6Galvanized,sub);
+  }
+  V5.add(sub);
+
+
+  // ---------- ROADS / SNOW COMPACTION ----------
+  const roads=new THREE.Group();
+  // darker compacted service lanes
+  const roadMat=M('#69747a',{roughness:1,metalness:0});
+  [
+    [0,.02,18,5,54],
+    [24,.02,8,6,40],
+    [-22,.02,2,5,32],
+    [15,.02,28,6,26]
+  ].forEach(([x,y,z,w,d])=>v6Cube(w,.035,d,x,y,z,roadMat,roads));
+  // tire tracks
+  const track=M('#4b555a',{roughness:1});
+  [-1.15,1.15].forEach(dx=>{
+    v6Cube(.32,.02,52,dx,.065,18,track,roads);
+    v6Cube(.32,.02,36,24+dx,.065,8,track,roads);
+  });
+  // v6Snow berms at road edges
+  for(let i=-20;i<=20;i+=4){
+    const drift=new THREE.Mesh(new THREE.SphereGeometry(1,12,7),v6Snow);
+    drift.scale.set(2.2,.22,.65); drift.position.set(i,.13,45); roads.add(drift);
+  }
+  V5.add(roads);
+
+  // ---------- REALISTIC UTILITY POLES / CONDUCTORS ----------
+  const poles=new THREE.Group();
+  [-30,-20,-10,0,10,20,30].forEach(x=>{
+    v6Pipe([x,.3,-2],[x,7.0,-2],.09,v6Galvanized,poles);
+    v6Pipe([x-1.2,6.4,-2],[x+1.2,6.4,-2],.045,v6Steel,poles);
+    [-.85,0,.85].forEach(dx=>v6Cyl(.06,.20,x+dx,6.42,-2,v6Snow,poles));
+  });
+  // Three separate conductors with believable sag.
+  for(let c=-.7;c<=.7;c+=.7){
+    for(let i=0;i<6;i++){
+      const x=-30+i*10;
+      v6Pipe([x+c,6.25,-2],[x+5+c,5.95,-2],.018,v6Dark,poles);
+      v6Pipe([x+5+c,5.95,-2],[x+10+c,6.25,-2],.018,v6Dark,poles);
+    }
+  }
+  V5.add(poles);
+
+  // ---------- SERVICE / LOGISTICS YARD ----------
+  const yard=new THREE.Group();
+  for(let i=0;i<10;i++){
+    const x=-22+(i%5)*2.3, z=-17+Math.floor(i/5)*2.5;
+    v6Cube(1.6,.20,1.15,x,.65,z,M('#5d4634',{roughness:.95}),yard);
+    for(let k=0;k<4;k++) v6Cube(.06,.65,1.0,x-.55+k*.36,.85,z,v6Dark,yard);
+  }
+  // Drums and gas-cylinder style service containers.
+  for(let i=0;i<8;i++){
+    const x=1+(i%4)*.9, z=-17+Math.floor(i/4)*1.5;
+    v6Cyl(.28,.85,x,.6,z,i%2?v6Painted:v6Safety,yard);
+  }
+  V5.add(yard);
+
+  // ---------- SNOW / ROCK MATERIAL VARIATION ----------
+  const rockMats=[
+    M('#4e585d',{roughness:1}),
+    M('#606a6f',{roughness:.98}),
+    M('#737b7e',{roughness:1})
+  ];
+  for(let i=0;i<46;i++){
+    const x=-70+rnd()*140, z=-25+rnd()*85;
+    if(Math.abs(x)<28 && z>0 && z<35) continue;
+    const r=new THREE.Mesh(new THREE.DodecahedronGeometry(.7+rnd()*1.8,0),rockMats[i%3]);
+    r.scale.set(1.4,.55,.9);
+    r.position.set(x,.12+rnd()*.25,z);
+    r.rotation.set(rnd()*.4,rnd()*Math.PI,rnd()*.25);
+    V5.add(r);
+  }
+  // low v6Snow banks around selected industrial edges
+  [[-30,4,7,1.8],[26,10,6,2.2],[50,19,5,1.6],[-15,-9,4,1.5]].forEach(([x,z,sx,sy])=>{
+    const d=new THREE.Mesh(new THREE.SphereGeometry(1,16,8),v6Snow);
+    d.scale.set(sx,sy,.9); d.position.set(x,.18,z); V5.add(d);
+  });
+
+  // ---------- RESTRAINED INDUSTRIAL LIGHTING ----------
+  [[-18,6,19],[0,7,19],[18,6,19],[35,5,18],[-8,5,8]].forEach(([x,y,z])=>{
+    const p=new THREE.PointLight(0xffd5a1,.22,13);
+    p.position.set(x,y,z); V5.add(p);
+  });
+
+  // Expose scene layer for future application integration.
+  window.POLAR_STATION_REALISM_V5 = {
+    version:'V5',
+    group:V5,
+    mode:'visual-only',
+    duplicateDashboardCards:false
+  };
+})();
+
+
+/* EQUIPMENT REALISM V6 */
+window.POLAR_STATION_EQUIPMENT_REALISM={version:'V6',solar:'framed PV cells',generator:'diesel gensets',battery:'containerized BESS racks'};
+
+/* BESS VISIBILITY MARKER V7 */
+{
+  const g=new THREE.Group();
+  const signMat=M('#d9e1e5',{metalness:.2,roughness:.55});
+  const darkSign=M('#18232a',{metalness:.45,roughness:.45});
+  const poleMat=M('#69757b',{metalness:.72,roughness:.4});
+  const plate=new THREE.Mesh(new THREE.BoxGeometry(4.8,.75,.08),darkSign);
+  plate.position.set(-20,4.8,1.8); g.add(plate);
+  const left=new THREE.Mesh(new THREE.BoxGeometry(.07,.52,.04),signMat);
+  left.position.set(-22.0,4.85,1.86); g.add(left);
+  const right=left.clone(); right.position.x=-18.0; g.add(right);
+  const bar=new THREE.Mesh(new THREE.BoxGeometry(3.6,.05,.05),signMat);
+  bar.position.set(-20,4.52,1.86); g.add(bar);
+  // two grounded sign supports
+  for(const x of [-21.7,-18.3]){
+    const p=new THREE.Mesh(new THREE.CylinderGeometry(.035,.035,1.5,10),poleMat);
+    p.position.set(x,3.9,1.8); g.add(p);
+  }
+  S.add(g);
+}
+
+
+/* ================= FINAL DIGITAL TWIN MOTION V8 =================
+   Subtle operational animation:
+   - turbine rotation
+   - PV sun tracking
+   - BESS HVAC fans + status pulse
+   - diesel radiator fans + exhaust pulse
+   - moving service vehicles
+   - animated energy/current flow
+   - beacon/safety-light movement
+   - gentle atmospheric motion
+*/
+(function(){
+  const reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const motion = {
+    solar:null, battery:null, generator:null,
+    fans:[], lights:[], vehicles:[]
+  };
+
+  // Locate the V6 equipment groups by their distinctive world-space geometry.
+  const all = [];
+  S.traverse(o=>all.push(o));
+
+  // Solar array is the most recent group with a large number of blue PV cells.
+  const solarCandidates = all.filter(o =>
+    o.isGroup && o.children && o.children.length > 20
+  );
+  if (solarCandidates.length) {
+    // Choose the group whose position is around the PV field.
+    motion.solar = solarCandidates.find(o =>
+      Math.abs(o.position.x + 27) < 2 && Math.abs(o.position.z + 16) < 2
+    ) || null;
+  }
+
+  // Find large battery and generator assemblies by their world-space bounding boxes.
+  // We also identify fan meshes by cylinder geometry and their local heights.
+  const fanCandidates = [];
+  S.traverse(o=>{
+    if(!o.isMesh || !o.geometry) return;
+    if(o.geometry.type === 'CylinderGeometry') fanCandidates.push(o);
+  });
+
+  // Battery HVAC fans are near the visible BESS yard after its corrected translation.
+  fanCandidates.forEach(o=>{
+    const p=o.getWorldPosition(new THREE.Vector3());
+    if(p.x>15 && p.x<45 && p.z>-30 && p.z<0 && p.y>3.7 && p.y<5.0){
+      motion.fans.push({o,axis:'y',speed:1.7});
+    }
+    // Generator radiator fans occupy the generator service zone.
+    if(p.x>-20 && p.x<20 && p.z>20 && p.z<32 && p.y>2.6 && p.y<3.7){
+      motion.fans.push({o,axis:'y',speed:2.4});
+    }
+  });
+
+  // A few safe, restrained status lights on the station.
+  const statusMat = new THREE.MeshStandardMaterial({
+    color:0x48e0a0, emissive:0x116b49, emissiveIntensity:.65
+  });
+  const amberMat = new THREE.MeshStandardMaterial({
+    color:0xffb84d, emissive:0x6b3208, emissiveIntensity:.7
+  });
+
+  [[-10,8.7,4.7],[0,8.7,4.7],[10,8.7,4.7]].forEach(p=>{
+    const m=new THREE.Mesh(new THREE.SphereGeometry(.075,10,8),statusMat.clone());
+    m.position.set(...p); S.add(m); motion.lights.push({m,phase:Math.random()*6.28,rate:1.1});
+  });
+  [[-8,8.1,22.2],[0,8.1,22.2],[8,8.1,22.2]].forEach(p=>{
+    const m=new THREE.Mesh(new THREE.SphereGeometry(.08,10,8),amberMat.clone());
+    m.position.set(...p); S.add(m); motion.lights.push({m,phase:Math.random()*6.28,rate:1.5});
+  });
+
+  // Two compact tracked utility vehicles that circulate slowly on the service loop.
+  function vehicle(){
+    const g=new THREE.Group();
+    const body=new THREE.Mesh(
+      new THREE.BoxGeometry(1.7,.62,2.8),
+      new THREE.MeshStandardMaterial({color:0x59656d,metalness:.28,roughness:.7})
+    );
+    body.position.y=.62; g.add(body);
+    const cab=new THREE.Mesh(
+      new THREE.BoxGeometry(1.35,.72,1.25),
+      new THREE.MeshStandardMaterial({color:0x344752,metalness:.2,roughness:.55})
+    );
+    cab.position.set(0,1.17,.35); g.add(cab);
+    const glass=new THREE.Mesh(
+      new THREE.BoxGeometry(1.05,.42,.035),
+      new THREE.MeshStandardMaterial({color:0x244456,metalness:.35,roughness:.2})
+    );
+    glass.position.set(0,1.25,.99); g.add(glass);
+    for(const x of [-.92,.92]){
+      for(const z of [-.8,.8]){
+        const w=new THREE.Mesh(
+          new THREE.CylinderGeometry(.25,.25,.18,16),
+          new THREE.MeshStandardMaterial({color:0x111417,roughness:.9})
+        );
+        w.rotation.z=Math.PI/2; w.position.set(x,.48,z); g.add(w);
+      }
+    }
+    const lamp=new THREE.Mesh(
+      new THREE.SphereGeometry(.055,8,8),
+      new THREE.MeshStandardMaterial({color:0xffe2a0,emissive:0x6a450d,emissiveIntensity:.8})
+    );
+    lamp.position.set(0,.93,1.42); g.add(lamp);
+    return g;
+  }
+
+  const v1=vehicle(), v2=vehicle();
+  v1.position.set(-4,.55,43); v2.position.set(18,.55,43);
+  S.add(v1,v2);
+  motion.vehicles=[
+    {g:v1,phase:0,speed:.022},
+    {g:v2,phase:Math.PI,speed:.017}
+  ];
+
+  // Additional energy-flow pulses are already present in the original scene.
+  // This adds a subtle physical "load heartbeat" to the station lighting.
+  const clock=new THREE.Clock();
+  function frame(){
+    requestAnimationFrame(frame);
+    if(reduced) return;
+    const t=clock.getElapsedTime();
+
+    // PV array gently tracks the sun instead of remaining perfectly static.
+    if(motion.solar){
+      motion.solar.rotation.y=-.12 + Math.sin(t*.055)*.035;
+      motion.solar.rotation.x=-.48 + Math.sin(t*.035)*.012;
+    }
+
+    motion.fans.forEach(({o,axis,speed})=>{
+      o.rotation[axis] += speed*.035*(window.POLAR_EMS_FLOW_INTENSITY||1);
+    });
+
+    motion.lights.forEach(({m,phase,rate})=>{
+      m.material.emissiveIntensity=.45 + .5*(.5+.5*Math.sin(t*rate+phase));
+    });
+
+    // Slow service-vehicle route: oval/rectangular service loop.
+    motion.vehicles.forEach((v,i)=>{
+      const a=t*v.speed+v.phase;
+      const x=5 + Math.cos(a)*34;
+      const z=20 + Math.sin(a)*22;
+      v.g.position.set(x,.56,z);
+      v.g.rotation.y=-Math.atan2(Math.cos(a)*34,-Math.sin(a)*22);
+    });
+  }
+  frame();
+
+  window.POLAR_STATION_FINAL_MOTION = {
+    version:'V8',
+    batteryVisible:true,
+    solarTracking:true,
+    generatorFans:true,
+    batteryCoolingFans:true,
+    serviceVehicles:true,
+    reducedMotionRespected:true
+  };
+})();
+
+
+/* ================= DHRUVA ASSET RECOGNITION LABELS =================
+   Embedded Command Center mode: concise default labels, collision-aware layout,
+   grouped generation assets, and no label stack over the physical station.
+*/
+(function(){
+  const host=document.getElementById('asset-labels');
+  if(!host) return;
+  if(new URLSearchParams(window.location.search).get('startup') === '1') { host.style.display='none'; return; }
+
+  const labels=[
+    {id:'main',name:'MAIN BUILDING',type:'STATION LOAD',pos:[-4,11.2,9.7],kind:'load',priority:1,value:()=>`LOAD · ${Math.round(Number(window.POLAR_EMS_LIVE_STATE?.power?.loadKw)||0)} kW`},
+    {id:'research',name:'RESEARCH BLOCK',type:'LABS / OPERATIONS',pos:[24,4.8,-4.2],kind:'load',priority:3,value:()=>`IMPORTANT LOAD`},
+    {id:'summer',name:'SUMMER CAMP',type:'CONTAINER MODULES',pos:[39,4.8,1],kind:'load',priority:4,value:()=>`SUPPORT FACILITY`},
+    {id:'workshop',name:'WORKSHOP & UTILITIES',type:'SERVICE FACILITY',pos:[16,5.2,26],kind:'load',priority:5,value:()=>`SERVICE LOAD`},
+    {id:'pump',name:'WATER PUMP HOUSE',type:'UTILITY / WATER',pos:[-24,4.5,25],kind:'load',priority:6,value:()=>`UTILITY ASSET`},
+    {id:'wind',name:'WIND FARM',type:'RENEWABLE GENERATION',pos:[-39,21,-18],kind:'energy',priority:1,value:()=>`OUTPUT · ${Math.round(Number(window.POLAR_EMS_LIVE_STATE?.power?.windKw)||0)} kW · 5 TURBINES`},
+    {id:'solar',name:'SOLAR ARRAY',type:'PV GENERATION',pos:[-18,5,-11],kind:'energy',priority:2,value:()=>`OUTPUT · ${Math.round(Number(window.POLAR_EMS_LIVE_STATE?.power?.solarKw)||0)} kW`},
+    {id:'diesel',name:'DIESEL GENERATORS',type:'BACKUP GENERATION',pos:[0,10.2,28.5],kind:'energy',priority:1,value:()=>`OUTPUT · ${Math.round(Number(window.POLAR_EMS_LIVE_STATE?.power?.dieselKw)||0)} kW`},
+    {id:'battery',name:'BATTERY ENERGY STORAGE',type:'BESS',pos:[26,5,-12],kind:'energy',priority:1,value:()=>`SOC · ${Math.round(Number(window.POLAR_EMS_LIVE_STATE?.battery?.socPercent)||0)}%`},
+    {id:'fuel',name:'FUEL FARM',type:'DIESEL STORAGE',pos:[38,7.8,14],kind:'fuel',priority:1,value:()=>`LEVEL · ${Math.round(Number(window.POLAR_EMS_LIVE_STATE?.fuel?.liters)||0).toLocaleString()} L`},
+    {id:'substation',name:'ELECTRICAL SUBSTATION',type:'SWITCHGEAR / TRANSFORMER',pos:[-8,8.5,11],kind:'energy',priority:2,value:()=>`POWER ROUTING`},
+    {id:'fuelpump',name:'FUEL PUMP HOUSE',type:'TRANSFER SYSTEM',pos:[23,5.5,25],kind:'fuel',priority:4,value:()=>`FUEL TRANSFER`},
+    {id:'comms',name:'COMMUNICATIONS MAST',type:'SATCOM / RADIO',pos:[17,17,0],kind:'load',priority:5,value:()=>`COMMS INFRASTRUCTURE`},
+    {id:'radome',name:'WEATHER / RADOME',type:'OBSERVATION',pos:[8,6,-24],kind:'load',priority:5,value:()=>`ENVIRONMENT SENSOR`}
+  ];
+
+  // Individual turbines are intentionally not shown simultaneously. The WIND FARM
+  // label identifies the complete asset group; this prevents five labels from stacking.
+  const els=new Map();
+  labels.forEach(a=>{
+    const el=document.createElement('div');
+    el.className='asset-label '+(a.kind||'');
+    el.innerHTML=`<span class="asset-type">${a.type}</span><span class="asset-name">${a.name}</span><span class="asset-value">${a.value()}</span>`;
+    host.appendChild(el); els.set(a.id,el);
+  });
+
+  const v=new THREE.Vector3();
+  const boxes=[];
+  const GAP=8;
+  const clamp=(n,min,max)=>Math.max(min,Math.min(max,n));
+
+  function update(){
+    const w=innerWidth,h=innerHeight;
+    boxes.length=0;
+    const projected=[];
+    labels.forEach(a=>{
+      const el=els.get(a.id);
+      v.set(a.pos[0],a.pos[1],a.pos[2]).project(cam);
+      const behind=v.z>1 || v.z< -1;
+      const x=(v.x*.5+.5)*w, y=(-v.y*.5+.5)*h;
+      projected.push({a,el,x,y,behind});
+    });
+
+    // Highest-priority labels get their natural anchor first. Lower-priority labels
+    // are nudged vertically until they no longer overlap an already placed label.
+    projected.sort((a,b)=>(a.a.priority||9)-(b.a.priority||9));
+    projected.forEach(item=>{
+      const {a,el}=item;
+      if(item.behind){ el.style.display='none'; return; }
+      el.style.display='block';
+      const value=el.querySelector('.asset-value');
+      if(value) value.textContent=a.value();
+      const ew=el.offsetWidth||150, eh=el.offsetHeight||40;
+      let x=clamp(item.x,ew/2+8,w-ew/2-8);
+      let y=clamp(item.y,eh+8,h-8);
+      let tries=0;
+      while(tries<16){
+        const hit=boxes.some(b=>Math.abs(x-b.x)<(ew+b.w)/2+GAP && Math.abs(y-b.y)<(eh+b.h)/2+GAP);
+        if(!hit) break;
+        y-=eh+GAP;
+        if(y<eh+8){ y=clamp(item.y+eh+GAP,eh+8,h-8); x+=Math.min(90,ew*.35); x=clamp(x,ew/2+8,w-ew/2-8); }
+        tries++;
+      }
+      boxes.push({x,y,w:ew,h:eh});
+      el.style.transform=`translate(${x}px,${y}px) translate(-50%,-100%)`;
+    });
+    requestAnimationFrame(update);
+  }
+  update();
+})();
+
+/* DIGITAL_TWIN_MAXIMIZE_BRIDGE_V1 */
+(function(){
+  function setTwinMode(maximized){
+    document.documentElement.classList.toggle('dt-maximized', !!maximized);
+    document.body.classList.toggle('dt-maximized', !!maximized);
+    // Give Three.js a frame to resize after the container changes.
+    setTimeout(function(){
+      try {
+        if (typeof onResize === 'function') onResize();
+        else window.dispatchEvent(new Event('resize'));
+      } catch(e) { window.dispatchEvent(new Event('resize')); }
+    }, 80);
+  }
+  window.addEventListener('message', function(ev){
+    if(!ev || !ev.data) return;
+    if(ev.data.type === 'POLAR_DIGITAL_TWIN_MAXIMIZE'){
+      setTwinMode(!!ev.data.maximized);
+    }
+  });
+})();
+</script>
+</body>
+</html>

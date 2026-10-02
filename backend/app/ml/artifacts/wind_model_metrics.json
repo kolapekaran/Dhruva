@@ -1,0 +1,38 @@
+{
+  "model": "RandomForestRegressor",
+  "target": "wind_generation_kw",
+  "samples": 10000,
+  "training_samples": 8000,
+  "test_samples": 2000,
+  "features": [
+    "temperature_celsius",
+    "hour",
+    "wind_speed_mps",
+    "is_night",
+    "wind_chill"
+  ],
+  "turbine": {
+    "rated_power_kw": 100.0,
+    "cut_in_mps": 3.0,
+    "rated_speed_mps": 12.0,
+    "cut_out_mps": 25.0
+  },
+  "metrics": {
+    "MAE_kW": 1.3975,
+    "RMSE_kW": 2.7462,
+    "R2": 0.9961,
+    "MAPE_percent_operating": 6.2548
+  },
+  "dataset": {
+    "temperature_min_celsius": -55.0,
+    "temperature_max_celsius": 5.0,
+    "wind_min_mps": 0.0,
+    "wind_max_mps": 30.0,
+    "synthetic": true
+  },
+  "physical_constraints": {
+    "minimum_output_kw": 0.0,
+    "maximum_output_kw": 100.0
+  },
+  "warning": "Training data is physically grounded synthetic data. It must not be presented as measured Antarctic telemetry."
+}

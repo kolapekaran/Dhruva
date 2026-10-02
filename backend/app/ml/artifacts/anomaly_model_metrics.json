@@ -1,0 +1,7 @@
+{
+  "model": "IsolationForest",
+  "samples": 20000,
+  "contamination": 0.03,
+  "synthetic": true,
+  "warning": "Reference anomaly model; field sensor distributions should replace this reference training set."
+}

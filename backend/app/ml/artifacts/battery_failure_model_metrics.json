@@ -1,0 +1,20 @@
+{
+  "model": "RandomForestClassifier",
+  "target": "battery_failure",
+  "samples": 30000,
+  "positive_rate": 0.3095333333333333,
+  "features": [
+    "temperature_celsius",
+    "wind_speed_mps",
+    "irradiance_w_m2",
+    "load_kw",
+    "soc_percent",
+    "fuel_percent",
+    "battery_health_percent",
+    "diesel_runtime_hours"
+  ],
+  "accuracy": 0.9611666666666666,
+  "roc_auc": 0.965758854396364,
+  "synthetic": true,
+  "warning": "Reference stress model; not field-calibrated."
+}

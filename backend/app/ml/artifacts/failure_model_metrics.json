@@ -1,0 +1,10 @@
+{
+  "model": "RandomForestClassifier",
+  "target": "general_asset_failure",
+  "samples": 30000,
+  "positive_rate": 0.3107333333333333,
+  "accuracy": 0.9713333333333334,
+  "roc_auc": 0.9659184300312964,
+  "synthetic": true,
+  "warning": "Reference stress model; not field-calibrated."
+}

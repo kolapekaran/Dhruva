@@ -1,0 +1,34 @@
+{
+  "model": "RandomForestRegressor",
+  "target": "solar_generation_kw",
+  "samples": 10000,
+  "training_samples": 8000,
+  "test_samples": 2000,
+  "features": [
+    "temperature_celsius",
+    "hour",
+    "wind_speed_mps",
+    "is_night",
+    "wind_chill"
+  ],
+  "plant_capacity_kw": 50.0,
+  "metrics": {
+    "MAE_kW": 4.3376,
+    "RMSE_kW": 6.6368,
+    "R2": 0.6853,
+    "MAPE_percent_daytime": 48.5595
+  },
+  "dataset": {
+    "temperature_min_celsius": -55.0,
+    "temperature_max_celsius": 5.0,
+    "wind_min_mps": 0.0,
+    "wind_max_mps": 25.0,
+    "synthetic": true
+  },
+  "physical_constraints": {
+    "minimum_output_kw": 0.0,
+    "maximum_output_kw": 50.0,
+    "night_output_expected_kw": 0.0
+  },
+  "warning": "Training data is physically grounded synthetic data. It must not be presented as measured Antarctic telemetry."
+}

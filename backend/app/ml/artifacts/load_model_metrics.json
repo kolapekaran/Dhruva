@@ -1,0 +1,27 @@
+{
+  "model": "RandomForestRegressor",
+  "samples": 5000,
+  "training_samples": 4000,
+  "test_samples": 1000,
+  "features": [
+    "temperature_celsius",
+    "hour",
+    "wind_speed_mps",
+    "is_night",
+    "wind_chill"
+  ],
+  "metrics": {
+    "MAE_kW": 1.3202,
+    "RMSE_kW": 1.6589,
+    "R2": 0.9863,
+    "MAPE_percent": 1.8586
+  },
+  "dataset": {
+    "temperature_min_celsius": -55.0,
+    "temperature_max_celsius": 5.0,
+    "wind_min_mps": 0.0,
+    "wind_max_mps": 25.0,
+    "synthetic": true
+  },
+  "warning": "Training data is physically grounded synthetic data. It must not be presented as measured Antarctic telemetry."
+}
